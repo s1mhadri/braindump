@@ -77,7 +77,10 @@ enum Command {
     Version,
 }
 
-const VERSION: &str = env!("CARGO_PKG_VERSION");
+const VERSION: &str = match option_env!("BD_VERSION") {
+    Some(version) => version,
+    None => env!("CARGO_PKG_VERSION"),
+};
 
 const USAGE: &str = "bd - capture a thought in under a second
 
