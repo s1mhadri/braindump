@@ -4,7 +4,7 @@ The detailed usage, format, and behavior documentation for Braindump. See `READM
 
 ## Installation and distribution
 
-Braindump distributes pre-built native binaries for macOS and Linux on versioned GitHub release tags (`v0.1.0` style).
+Braindump distributes pre-built native binaries for macOS and Linux on versioned GitHub release tags (`v0.2.0` style).
 
 Supported release targets:
 - macOS Intel (`x86_64-apple-darwin`)
@@ -24,9 +24,9 @@ A release archive whose checksum does not match is rejected before anything is i
 
 Options for `install.sh`:
 - `INSTALL_DIR`: Set custom installation destination directory (e.g. `INSTALL_DIR=$HOME/bin sh install.sh`).
-- `VERSION`: Specify exact version to install (e.g. `VERSION=v0.1.0 sh install.sh`).
+- `VERSION`: Specify exact version to install (e.g. `VERSION=v0.2.0 sh install.sh`).
 
-The release pipeline injects the release tag into the binary at build time, so `bd --version` reports exactly the released version (`v0.1.0` builds report `bd 0.1.0`).
+The release pipeline injects the release tag into the binary at build time, so `bd --version` reports exactly the released version (`v0.2.0` builds report `bd 0.2.0`).
 
 ## Braindump file
 
