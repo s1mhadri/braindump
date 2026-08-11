@@ -4,7 +4,7 @@ set -eu
 REPO="s1mhadri/braindump"
 
 info() {
-  printf "bd: %s\n" "$1"
+  printf "bd: %s\n" "$1" >&2
 }
 
 warn() {
@@ -91,7 +91,8 @@ resolve_tag() {
   fi
 
   info "Finding latest release..."
-  latest_json="$(download_stdout "https://api.github.com/repos/${REPO}/releases/latest" 2>/dev/null || true)"
+  api_url="${BD_API_URL:-https://api.github.com/repos/${REPO}/releases/latest}"
+  latest_json="$(download_stdout "$api_url" 2>/dev/null || true)"
   tag="$(echo "$latest_json" | grep '"tag_name":' | head -n 1 | sed -E 's/.*"tag_name":[[:space:]]*"([^"]+)".*/\1/' || true)"
 
   if [ -z "$tag" ]; then

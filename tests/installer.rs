@@ -89,19 +89,35 @@ fn mock_release_root(
     root
 }
 
-fn run_installer(temp: &TempDir, mock_root: &Path, install_dir: &Path, version: &str) -> Output {
+fn run_installer(
+    temp: &TempDir,
+    mock_root: &Path,
+    install_dir: &Path,
+    version: Option<&str>,
+    api_url: Option<&str>,
+) -> Output {
     let wrapper = temp.path().join("run_install.sh");
+    let version_line = match version {
+        Some(version) => format!(r#"export VERSION="{version}""#),
+        None => String::new(),
+    };
+    let api_line = match api_url {
+        Some(api_url) => format!(r#"export BD_API_URL="{api_url}""#),
+        None => String::new(),
+    };
     let content = format!(
         r#"#!/bin/sh
 set -eu
 export BD_INSTALLER_SKIP_MAIN=1
 . ./install.sh
-export VERSION="{version}"
+{version_line}
+{api_line}
 export INSTALL_DIR="{install_dir}"
 export BD_INSTALL_BASE_URL="file://{mock_root}"
 main
 "#,
-        version = version,
+        version_line = version_line,
+        api_line = api_line,
         install_dir = install_dir.display(),
         mock_root = mock_root.display()
     );
@@ -140,7 +156,7 @@ fn install_script_downloads_verifies_and_installs_the_binary() {
     let mock_root = mock_release_root(&temp, tag, &archive_bytes, sha_bytes.as_bytes());
 
     let install_dir = temp.path().join("bin");
-    let output = run_installer(&temp, &mock_root, &install_dir, version);
+    let output = run_installer(&temp, &mock_root, &install_dir, Some(version), None);
     assert!(
         output.status.success(),
         "stderr: {}",
@@ -173,7 +189,7 @@ fn install_script_aborts_when_the_archive_checksum_mismatches() {
     let mock_root = mock_release_root(&temp, tag, &corrupted, sha_bytes.as_bytes());
 
     let install_dir = temp.path().join("bin");
-    let output = run_installer(&temp, &mock_root, &install_dir, version);
+    let output = run_installer(&temp, &mock_root, &install_dir, Some(version), None);
 
     assert!(!output.status.success());
     assert!(
@@ -184,4 +200,39 @@ fn install_script_aborts_when_the_archive_checksum_mismatches() {
         String::from_utf8_lossy(&output.stderr)
     );
     assert!(!install_dir.join("bd").exists());
+}
+
+#[test]
+fn install_script_discovers_latest_release_when_version_unset() {
+    let temp = tempdir().expect("create temp dir");
+    let tag = "v0.1.0";
+
+    let archive_path = temp.path().join(archive_name(tag));
+    build_archive(&temp.path().join("work"), &archive_path);
+    let archive_bytes = fs::read(&archive_path).unwrap();
+    let sha = sha256_of(&archive_path);
+    let sha_bytes = format!("{sha}  {name}\n", name = archive_name(tag));
+    let release_dir = mock_release_root(&temp, tag, &archive_bytes, sha_bytes.as_bytes());
+
+    fs::write(
+        release_dir.join("releases-latest.json"),
+        format!("{{\"tag_name\": \"{tag}\"}}\n"),
+    )
+    .unwrap();
+
+    let install_dir = temp.path().join("bin");
+    let api_url = format!("file://{}/releases-latest.json", release_dir.display());
+    let output = run_installer(&temp, &release_dir, &install_dir, None, Some(&api_url));
+    assert!(
+        output.status.success(),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+
+    let installed = install_dir.join("bd");
+    assert!(installed.exists());
+    let version_output = Command::new(&installed)
+        .output()
+        .expect("run installed binary");
+    assert_eq!(String::from_utf8_lossy(&version_output.stdout).trim(), "bd 0.1.0");
 }
