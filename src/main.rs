@@ -1,6 +1,7 @@
 mod config;
 mod migration;
 mod setup;
+mod uninstall;
 
 use chrono::Local;
 use std::fs::{self, OpenOptions};
@@ -27,6 +28,11 @@ fn run() -> Result<(), String> {
         Input::Command(Command::Setup) => {
             let existing = config::load_path()?.map(PathBuf::from);
             run_setup(existing.as_deref())?;
+            Ok(())
+        }
+        Input::Command(Command::Uninstall) => {
+            let config_dir = config::braindump_config_dir()?;
+            uninstall::run(&config_dir)?;
             Ok(())
         }
         Input::Literal(text) => dump(normalize_note(text)),
@@ -74,6 +80,7 @@ enum Input {
 enum Command {
     Help,
     Setup,
+    Uninstall,
     Version,
 }
 
@@ -93,6 +100,7 @@ OPTIONS:
     -h, --help        Print this help
     -v, --version     Print the version
     --setup           Configure where dumps are stored
+    --uninstall       Remove the binary and its config
 
 Everything else at the first position is note text, so bd git checkout -f and
 bd -important note capture verbatim.
@@ -104,6 +112,7 @@ fn parse_args() -> Input {
         Some("-h") | Some("--help") => Input::Command(Command::Help),
         Some("-v") | Some("--version") => Input::Command(Command::Version),
         Some("--setup") => Input::Command(Command::Setup),
+        Some("--uninstall") => Input::Command(Command::Uninstall),
         Some("--") => Input::Literal(args[1..].join(" ")),
         Some(_) => Input::Literal(args.join(" ")),
         None => Input::Interactive,

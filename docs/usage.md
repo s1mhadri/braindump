@@ -57,8 +57,19 @@ Only an exact match at the first position against the slot-0 allow-list is treat
 - `bd -h` / `bd --help` prints usage to stdout and exits.
 - `bd -v` / `bd --version` prints the version and exits.
 - `bd --setup` runs the interactive setup flow, which (re)configures the braindump file path.
+- `bd --uninstall` removes the bd binary and the config directory (see [Uninstall](#uninstall)).
 - `bd -- <text...>` forces literal text mode: the `--` is dropped and everything after it is appended verbatim, even if it looks like a command (`bd -- --search foo` appends `--search foo`).
 - Command-like tokens in any position after the first are always note text (`bd call -h support` appends `call -h support`).
+
+## Uninstall
+
+`bd --uninstall` removes bd from the machine with a single confirmed command. It is a slot-0 command, so it works without trusting a remote uninstaller script and needs no network access.
+
+Before deleting anything it prints a summary of what will be removed (the binary path and the config directory) and requires an explicit `y`/`Y`. Enter, `n`, Ctrl+C, or EOF aborts, deletes nothing, and exits non-zero.
+
+On confirmation it removes the config directory at the platform-standard location (`$XDG_CONFIG_HOME/braindump`, `~/.config/braindump`, or `%APPDATA%\braindump`) and unlinks the running binary itself. When the binary's directory is not writable (typically a `/usr/local/bin` install), the uninstall escalates with `sudo` just like the installer does. Re-running when the binary or config is already gone succeeds and reports what was and was not removed rather than erroring.
+
+The braindump file is never deleted: your notes are your data, and after uninstalling you decide what to do with them. If the configured braindump file lives inside the config directory, the directory itself is kept (only the config file is removed) so the notes survive.
 
 ## Setup
 
@@ -82,5 +93,5 @@ The config lives at `$XDG_CONFIG_HOME/braindump/config.toml` (or `~/.config/brai
 - Inline mode normalizes line endings to LF; interactive input preserves interior bytes exactly. Every entry ends with a single trailing LF.
 - Repeated dumps append in order; the file is untouched except for the append.
 - On success `bd` prints nothing. On failure it prints `bd: <error>` to stderr and exits with status 1.
-- Notes starting with `-` are literal text, never parsed as flags, except for an exact slot-0 match against `-h`, `--help`, `-v`, `--version`, or `--setup`; `bd -- <text>` escapes even those.
+- Notes starting with `-` are literal text, never parsed as flags, except for an exact slot-0 match against `-h`, `--help`, `-v`, `--version`, `--setup`, or `--uninstall`; `bd -- <text>` escapes even those.
 - An invocation that produces only blank text (no arguments, an empty string, or whitespace only) is a silent no-op: nothing is written.

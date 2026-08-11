@@ -13,6 +13,7 @@ A cross-platform CLI for instant terminal braindumping. It appends timestamped t
 - `bd --setup` (or the first run) interactively configures where dumps are stored, with `~/braindump.md` as the default
 - A broken config (malformed, missing path, or a path that no longer accepts a dump) re-runs setup; setup requires a terminal and fails loudly without one
 - Config persisted at the platform-standard location
+- `bd --uninstall` removes the binary and its config in one confirmed step, leaving your notes untouched
 - Silent on success and on blank invocations
 
 ## Getting started
@@ -39,6 +40,14 @@ bd remember to buy milk
 ```
 
 The first run asks where dumps should live, defaulting to `~/braindump.md`. Run `bd --setup` at any time to change it. Run `bd` with no arguments to type directly in the terminal, ending with `Ctrl+D`. See `docs/usage.md` for the full file format and behavior details.
+
+### Uninstall
+
+```sh
+bd --uninstall
+```
+
+Confirm when prompted. `bd --uninstall` removes the `bd` binary and the config directory; your braindump file is never touched.
 
 ## Development
 

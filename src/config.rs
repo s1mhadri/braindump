@@ -83,7 +83,11 @@ pub fn save_path(braindump_file_path: &str) -> Result<(), String> {
 }
 
 pub fn config_path() -> Result<PathBuf, String> {
-    Ok(config_dir()?.join("braindump").join("config.toml"))
+    Ok(braindump_config_dir()?.join("config.toml"))
+}
+
+pub fn braindump_config_dir() -> Result<PathBuf, String> {
+    Ok(config_dir()?.join("braindump"))
 }
 
 fn config_dir() -> Result<PathBuf, String> {

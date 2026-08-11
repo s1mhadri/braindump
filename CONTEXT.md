@@ -43,3 +43,7 @@ _Avoid_: onboarding, wizard, configuration
 **Migration**:
 Copying an existing braindump file's entries verbatim into a new braindump file when the user changes the braindump file path. Never automatic; always an explicit choice during setup, with migration as the default.
 _Avoid_: transfer, import, move
+
+**Uninstall**:
+The interactive flow, invoked as `bd --uninstall`, that removes the bd binary and the config directory after an explicit confirmation. Never touches the braindump file.
+_Avoid_: deinstallation, removal, purge, cleanup

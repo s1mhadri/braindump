@@ -344,6 +344,37 @@ fn version_flag_prints_the_version_without_writing() {
 }
 
 #[test]
+fn help_lists_the_uninstall_command() {
+    let temp_home = tempdir().expect("create temporary home");
+
+    bd(&temp_home)
+        .arg("--help")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("--uninstall"))
+        .stderr("");
+
+    assert!(!temp_home.path().join("braindump").exists());
+}
+
+#[test]
+fn uninstall_only_counts_at_the_first_position() {
+    let temp_home = tempdir().expect("create temporary home");
+    seed_config(&temp_home);
+    let file_path = braindump_path(&temp_home);
+
+    bd(&temp_home)
+        .args(["note", "--uninstall"])
+        .assert()
+        .success()
+        .stdout("")
+        .stderr("");
+
+    let content = fs::read_to_string(file_path).expect("read braindump file");
+    assert!(content.ends_with("note --uninstall\n"));
+}
+
+#[test]
 fn help_flag_prints_usage_without_writing() {
     for flag in ["-h", "--help"] {
         let temp_home = tempdir().expect("create temporary home");

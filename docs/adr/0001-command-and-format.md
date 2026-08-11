@@ -1,6 +1,6 @@
 # Command grammar: slot-0 allow-list with a `--` escape hatch
 
-The CLI is a capture sink whose primary input is free-form text, which legitimately begins with `-` (code, shell examples). We decided that only an exact match at the first position against a small allow-list (`-h`, `--help`, `-v`, `--version`, `--setup`, and future dash-prefixed commands like `--search`) is interpreted as a command; everything else, including dash-prefixed text, is note content joined by a single space. In the common POSIX alternative (clap default), any `-` token is a flag and unknown flags error, which would break core use cases like `bd git checkout -f` or `bd call -h support`.
+The CLI is a capture sink whose primary input is free-form text, which legitimately begins with `-` (code, shell examples). We decided that only an exact match at the first position against a small allow-list (`-h`, `--help`, `-v`, `--version`, `--setup`, `--uninstall`, and future dash-prefixed commands like `--search`) is interpreted as a command; everything else, including dash-prefixed text, is note content joined by a single space. In the common POSIX alternative (clap default), any `-` token is a flag and unknown flags error, which would break core use cases like `bd git checkout -f` or `bd call -h support`.
 
 A `--` token at position zero permanently forces text mode for the rest of the invocation, giving users a universal escape hatch regardless of how the command list grows. Adding any new slot-0 command is a breaking decision for notes that begin with that exact string.
 
