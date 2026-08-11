@@ -24,6 +24,16 @@ Format rules:
 
 Everything after an entry header is free-form note text, always written verbatim.
 
+## Commands
+
+Only an exact match at the first position against the slot-0 allow-list is treated as a command; everything else, including dash-prefixed text, is note content joined with a single space.
+
+- `bd -h` / `bd --help` prints usage to stdout and exits.
+- `bd -v` / `bd --version` prints the version and exits.
+- `bd --setup` routes to the setup flow, which reconfigures the braindump file path. (Not yet implemented; reports a clear error.)
+- `bd -- <text...>` forces literal text mode: the `--` is dropped and everything after it is appended verbatim, even if it looks like a command (`bd -- --search foo` appends `--search foo`).
+- Command-like tokens in any position after the first are always note text (`bd call -h support` appends `call -h support`).
+
 ## Behavior notes
 
 - Arguments are joined with a single space; interior spacing is preserved (`bd foo "bar  baz"` appends `foo bar  baz`).
@@ -32,5 +42,5 @@ Everything after an entry header is free-form note text, always written verbatim
 - Inline mode normalizes line endings to LF; interactive input preserves interior bytes exactly. Every entry ends with a single trailing LF.
 - Repeated dumps append in order; the file is untouched except for the append.
 - On success `bd` prints nothing. On failure it prints `bd: <error>` to stderr and exits with status 1.
-- Notes starting with `-` are literal text, never parsed as flags.
+- Notes starting with `-` are literal text, never parsed as flags, except for an exact slot-0 match against `-h`, `--help`, `-v`, `--version`, or `--setup`; `bd -- <text>` escapes even those.
 - An invocation that produces only blank text (no arguments, an empty string, or whitespace only) is a silent no-op: nothing is written.

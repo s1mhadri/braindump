@@ -11,9 +11,18 @@ fn main() {
 }
 
 fn run() -> Result<(), String> {
-    let note = match inline_args() {
-        Some(text) => normalize_note(text),
-        None => read_interactive()?,
+    let note = match parse_args() {
+        Input::Command(Command::Help) => {
+            print!("{USAGE}");
+            return Ok(());
+        }
+        Input::Command(Command::Version) => {
+            println!("bd {VERSION}");
+            return Ok(());
+        }
+        Input::Command(Command::Setup) => return Err("setup is not implemented yet".to_string()),
+        Input::Literal(text) => normalize_note(text),
+        Input::Interactive => read_interactive()?,
     };
     if note.trim().is_empty() {
         return Ok(());
@@ -22,12 +31,45 @@ fn run() -> Result<(), String> {
     append_entry(&note)
 }
 
-fn inline_args() -> Option<String> {
+enum Input {
+    Command(Command),
+    Literal(String),
+    Interactive,
+}
+
+enum Command {
+    Help,
+    Setup,
+    Version,
+}
+
+const VERSION: &str = env!("CARGO_PKG_VERSION");
+
+const USAGE: &str = "bd - capture a thought in under a second
+
+USAGE:
+    bd [TEXT...]      Append TEXT as a new entry
+    bd                Read multi-line input from stdin until end-of-file
+    bd -- [TEXT...]   Append TEXT literally, even if it starts with a dash
+
+OPTIONS:
+    -h, --help        Print this help
+    -v, --version     Print the version
+    --setup           Configure where dumps are stored
+
+Everything else at the first position is note text, so bd git checkout -f and
+bd -important note capture verbatim.
+";
+
+fn parse_args() -> Input {
     let args: Vec<_> = std::env::args().skip(1).collect();
-    if args.is_empty() {
-        None
-    } else {
-        Some(args.join(" "))
+    match args.first().map(String::as_str) {
+        Some("-h") | Some("--help") => Input::Command(Command::Help),
+        Some("-v") | Some("--version") => Input::Command(Command::Version),
+        Some("--setup") => Input::Command(Command::Setup),
+        Some("--") => Input::Literal(args[1..].join(" ")),
+        Some(_) => Input::Literal(args.join(" ")),
+        None => Input::Interactive,
     }
 }
 

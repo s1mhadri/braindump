@@ -9,6 +9,7 @@ A cross-platform CLI for instant terminal braindumping. It appends timestamped t
 - One Markdown file per user, append-only: existing entries are never edited, deleted, or reordered
 - Day-grouped format (`# YYYY-MM-DD` header per day, `## HH:MM:SS` header per entry) for browsing in any Markdown renderer
 - Notes starting with `-` are written as-is, never misread as flags
+- `bd -h`/`--help` and `bd -v`/`--version` for usage and version; `bd -- <text>` forces literal text mode
 - Silent on success and on blank invocations
 
 ## Getting started

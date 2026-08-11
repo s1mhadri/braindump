@@ -396,6 +396,145 @@ fn piped_interactive_input_prints_no_hint() {
         .stderr("");
 }
 
+#[test]
+fn version_flag_prints_the_version_without_writing() {
+    for flag in ["-v", "--version"] {
+        let temp_home = tempdir().expect("create temporary home");
+
+        bd(&temp_home)
+            .arg(flag)
+            .assert()
+            .success()
+            .stdout(format!("bd {}\n", env!("CARGO_PKG_VERSION")))
+            .stderr("");
+
+        assert!(!temp_home.path().join("braindump").exists());
+    }
+}
+
+#[test]
+fn help_flag_prints_usage_without_writing() {
+    for flag in ["-h", "--help"] {
+        let temp_home = tempdir().expect("create temporary home");
+
+        bd(&temp_home)
+            .arg(flag)
+            .assert()
+            .success()
+            .stdout(predicate::str::contains("USAGE"))
+            .stderr("");
+
+        assert!(!temp_home.path().join("braindump").exists());
+    }
+}
+
+#[test]
+fn dash_prefixed_first_argument_is_literal_note_text() {
+    let temp_home = tempdir().expect("create temporary home");
+    let file_path = temp_home.path().join("braindump/braindump.md");
+
+    bd(&temp_home)
+        .args(["-important", "note"])
+        .assert()
+        .success()
+        .stdout("")
+        .stderr("");
+
+    let content = fs::read_to_string(file_path).expect("read braindump file");
+    assert!(content.ends_with("-important note\n"));
+}
+
+#[test]
+fn command_like_tokens_outside_first_position_are_literal_text() {
+    let temp_home = tempdir().expect("create temporary home");
+    let file_path = temp_home.path().join("braindump/braindump.md");
+
+    bd(&temp_home)
+        .args(["call", "-h", "support"])
+        .assert()
+        .success()
+        .stdout("")
+        .stderr("");
+
+    let content = fs::read_to_string(file_path).expect("read braindump file");
+    assert!(content.ends_with("call -h support\n"));
+}
+
+#[test]
+fn double_dash_at_first_position_forces_literal_text() {
+    let temp_home = tempdir().expect("create temporary home");
+    let file_path = temp_home.path().join("braindump/braindump.md");
+
+    bd(&temp_home)
+        .args(["--", "--search", "foo"])
+        .assert()
+        .success()
+        .stdout("")
+        .stderr("");
+
+    let content = fs::read_to_string(file_path).expect("read braindump file");
+    let last_line = content.lines().last().expect("content has a note");
+    assert_eq!(last_line, "--search foo");
+    assert!(!content.contains("-- --search"));
+}
+
+#[test]
+fn double_dash_makes_even_command_like_tokens_literal() {
+    for arguments in [["--", "-h"], ["--", "--setup"]] {
+        let temp_home = tempdir().expect("create temporary home");
+        let file_path = temp_home.path().join("braindump/braindump.md");
+
+        bd(&temp_home)
+            .args(arguments)
+            .assert()
+            .success()
+            .stdout("")
+            .stderr("");
+
+        let content = fs::read_to_string(file_path).expect("read braindump file");
+        let last_line = content.lines().last().expect("content has a note");
+        assert_eq!(last_line, arguments[1]);
+        assert!(!content.contains(&format!("-- {}", arguments[1])));
+    }
+}
+
+#[test]
+fn bare_double_dash_is_a_silent_no_op() {
+    let temp_home = tempdir().expect("create temporary home");
+
+    bd(&temp_home)
+        .arg("--")
+        .assert()
+        .success()
+        .stdout("")
+        .stderr("");
+
+    assert!(!temp_home.path().join("braindump").exists());
+}
+
+#[test]
+fn setup_flag_reports_it_is_not_implemented_yet() {
+    let temp_home = tempdir().expect("create temporary home");
+
+    bd(&temp_home)
+        .arg("--setup")
+        .assert()
+        .failure()
+        .code(1)
+        .stdout("")
+        .stderr(predicate::str::contains("not implemented"));
+
+    assert!(!temp_home.path().join("braindump").exists());
+}
+
+fn bd(temp_home: &tempfile::TempDir) -> assert_cmd::Command {
+    let mut command = Command::cargo_bin("bd").expect("locate bd binary");
+    command
+        .env("HOME", temp_home.path())
+        .env("XDG_CONFIG_HOME", temp_home.path().join("config"));
+    command
+}
+
 fn is_time_header(line: &str) -> bool {
     let time = line.strip_prefix("## ").unwrap_or_default();
     time.len() == 8
