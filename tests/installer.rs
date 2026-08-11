@@ -1,7 +1,114 @@
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
-use std::process::Command;
-use tempfile::tempdir;
+use std::path::{Path, PathBuf};
+use std::process::{Command, Output};
+use tempfile::{tempdir, TempDir};
+
+fn host_target() -> &'static str {
+    match (std::env::consts::OS, std::env::consts::ARCH) {
+        ("macos", "x86_64") => "x86_64-apple-darwin",
+        ("macos", "aarch64") => "aarch64-apple-darwin",
+        ("linux", "x86_64") => "x86_64-unknown-linux-gnu",
+        ("linux", "aarch64") => "aarch64-unknown-linux-gnu",
+        (os, arch) => panic!("unsupported test platform {os} {arch}"),
+    }
+}
+
+fn make_executable(path: &Path) {
+    let mut perms = fs::metadata(path).expect("metadata").permissions();
+    perms.set_mode(0o755);
+    fs::set_permissions(path, perms).expect("set permissions");
+}
+
+fn sha256_of(path: &Path) -> String {
+    let tool = if Command::new("sha256sum")
+        .arg(path)
+        .output()
+        .is_ok_and(|output| output.status.success())
+    {
+        "sha256sum"
+    } else {
+        "shasum"
+    };
+    let mut command = Command::new(tool);
+    if tool == "shasum" {
+        command.args(["-a", "256"]);
+    }
+    let output = command
+        .arg(path)
+        .output()
+        .expect("failed to run checksum tool");
+    assert!(
+        output.status.success(),
+        "{tool} failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    String::from_utf8(output.stdout)
+        .expect("checksum output is not UTF-8")
+        .split_whitespace()
+        .next()
+        .expect("checksum output has no hash")
+        .to_string()
+}
+
+fn build_archive(work_dir: &Path, archive_path: &Path) {
+    fs::create_dir_all(work_dir).unwrap();
+    let dummy_bd = work_dir.join("bd");
+    fs::write(&dummy_bd, "#!/bin/sh\necho bd 0.1.0\n").unwrap();
+    make_executable(&dummy_bd);
+
+    let status = Command::new("tar")
+        .args([
+            "-czf",
+            archive_path.to_str().unwrap(),
+            "-C",
+            work_dir.to_str().unwrap(),
+            "bd",
+        ])
+        .status()
+        .expect("failed to create test tar archive");
+    assert!(status.success());
+}
+
+fn archive_name(tag: &str) -> String {
+    format!("bd-{tag}-{target}.tar.gz", target = host_target())
+}
+
+fn mock_release_root(
+    temp: &TempDir,
+    tag: &str,
+    archive_bytes: &[u8],
+    sha_bytes: &[u8],
+) -> PathBuf {
+    let root = temp.path().join("mock_release");
+    let release_dir = root.join(tag);
+    fs::create_dir_all(&release_dir).unwrap();
+
+    fs::write(release_dir.join(archive_name(tag)), archive_bytes).unwrap();
+    fs::write(release_dir.join(format!("{}.sha256", archive_name(tag))), sha_bytes).unwrap();
+    root
+}
+
+fn run_installer(temp: &TempDir, mock_root: &Path, install_dir: &Path, version: &str) -> Output {
+    let wrapper = temp.path().join("run_install.sh");
+    let content = format!(
+        r#"#!/bin/sh
+set -eu
+export BD_INSTALLER_SKIP_MAIN=1
+. ./install.sh
+export VERSION="{version}"
+export INSTALL_DIR="{install_dir}"
+export BD_INSTALL_BASE_URL="file://{mock_root}"
+main
+"#,
+        version = version,
+        install_dir = install_dir.display(),
+        mock_root = mock_root.display()
+    );
+    fs::write(&wrapper, content).unwrap();
+    make_executable(&wrapper);
+    Command::new(&wrapper).output().expect("execute install.sh")
+}
 
 #[test]
 fn install_script_syntax_is_valid() {
@@ -19,86 +126,62 @@ fn install_script_syntax_is_valid() {
 }
 
 #[test]
-fn install_script_extracts_and_installs_binary_to_custom_dir() {
+fn install_script_downloads_verifies_and_installs_the_binary() {
     let temp = tempdir().expect("create temp dir");
-    let mock_release_dir = temp.path().join("mock_release");
-    let install_dir = temp.path().join("bin");
-
-    fs::create_dir_all(&mock_release_dir).unwrap();
-
-    // Create a dummy bd binary
-    let dummy_bd = mock_release_dir.join("bd");
-    fs::write(&dummy_bd, "#!/bin/sh\necho bd 0.1.0\n").unwrap();
-    let mut perms = fs::metadata(&dummy_bd).unwrap().permissions();
-    perms.set_mode(0o755);
-    fs::set_permissions(&dummy_bd, perms).unwrap();
-
-    // Package into tar.gz
     let tag = "v0.1.0";
-    let target = match (std::env::consts::OS, std::env::consts::ARCH) {
-        ("macos", "x86_64") => "x86_64-apple-darwin",
-        ("macos", "aarch64") => "aarch64-apple-darwin",
-        ("linux", "x86_64") => "x86_64-unknown-linux-gnu",
-        ("linux", "aarch64") => "aarch64-unknown-linux-gnu",
-        (os, arch) => panic!("unsupported test platform {os} {arch}"),
-    };
+    let version = "0.1.0";
 
-    let archive_name = format!("bd-{tag}-{target}.tar.gz");
-    let archive_path = temp.path().join(&archive_name);
+    let archive_path = temp.path().join(archive_name(tag));
+    build_archive(&temp.path().join("work"), &archive_path);
 
-    let tar_status = Command::new("tar")
-        .args([
-            "-czf",
-            archive_path.to_str().unwrap(),
-            "-C",
-            mock_release_dir.to_str().unwrap(),
-            "bd",
-        ])
-        .status()
-        .expect("failed to create test tar archive");
-    assert!(tar_status.success());
+    let archive_bytes = fs::read(&archive_path).unwrap();
+    let sha = sha256_of(&archive_path);
+    let sha_bytes = format!("{sha}  {name}\n", name = archive_name(tag));
+    let mock_root = mock_release_root(&temp, tag, &archive_bytes, sha_bytes.as_bytes());
 
-    // We test the extraction and installation portion of install.sh logic by simulating the environment
-    let test_script = temp.path().join("run_test.sh");
-    let script_content = format!(
-        r#"#!/bin/sh
-set -eu
-export INSTALL_DIR="{install_dir}"
-export VERSION="0.1.0"
-
-# Mock download_file function to use our local archive
-tmp_dir="$(mktemp -d)"
-trap 'rm -rf "$tmp_dir"' EXIT INT TERM
-
-cp "{archive_path}" "$tmp_dir/{archive_name}"
-tar -xzf "$tmp_dir/{archive_name}" -C "$tmp_dir"
-chmod +x "$tmp_dir/bd"
-
-mkdir -p "$INSTALL_DIR"
-mv "$tmp_dir/bd" "$INSTALL_DIR/bd"
-"#,
-        install_dir = install_dir.display(),
-        archive_path = archive_path.display(),
-        archive_name = archive_name
-    );
-
-    fs::write(&test_script, script_content).unwrap();
-    let mut perms = fs::metadata(&test_script).unwrap().permissions();
-    perms.set_mode(0o755);
-    fs::set_permissions(&test_script, perms).unwrap();
-
-    let output = Command::new(&test_script).output().expect("execute test script");
+    let install_dir = temp.path().join("bin");
+    let output = run_installer(&temp, &mock_root, &install_dir, version);
     assert!(
         output.status.success(),
         "stderr: {}",
         String::from_utf8_lossy(&output.stderr)
     );
 
-    let installed_binary = install_dir.join("bd");
-    assert!(installed_binary.exists());
+    let installed = install_dir.join("bd");
+    assert!(installed.exists());
 
-    let version_output = Command::new(&installed_binary)
+    let version_output = Command::new(&installed)
         .output()
         .expect("run installed binary");
     assert_eq!(String::from_utf8_lossy(&version_output.stdout).trim(), "bd 0.1.0");
+}
+
+#[test]
+fn install_script_aborts_when_the_archive_checksum_mismatches() {
+    let temp = tempdir().expect("create temp dir");
+    let tag = "v0.1.0";
+    let version = "0.1.0";
+
+    let archive_path = temp.path().join(archive_name(tag));
+    build_archive(&temp.path().join("work"), &archive_path);
+
+    let sha = sha256_of(&archive_path);
+    let sha_bytes = format!("{sha}  {name}\n", name = archive_name(tag));
+
+    let mut corrupted = fs::read(&archive_path).unwrap();
+    corrupted[0] ^= 0xFF;
+    let mock_root = mock_release_root(&temp, tag, &corrupted, sha_bytes.as_bytes());
+
+    let install_dir = temp.path().join("bin");
+    let output = run_installer(&temp, &mock_root, &install_dir, version);
+
+    assert!(!output.status.success());
+    assert!(
+        String::from_utf8_lossy(&output.stderr)
+            .to_lowercase()
+            .contains("checksum"),
+        "stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(!install_dir.join("bd").exists());
 }

@@ -69,6 +69,18 @@ detect_arch() {
   esac
 }
 
+verify_checksum() {
+  archive_name="$1"
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum -c "${archive_name}.sha256" >/dev/null 2>&1
+  elif command -v shasum >/dev/null 2>&1; then
+    shasum -a 256 -c "${archive_name}.sha256" >/dev/null 2>&1
+  else
+    warn "No SHA-256 verification tool found; skipping checksum verification."
+    return 0
+  fi
+}
+
 resolve_tag() {
   if [ -n "${VERSION:-}" ]; then
     case "$VERSION" in
@@ -104,7 +116,8 @@ main() {
   tag="$(resolve_tag)"
 
   archive_name="bd-${tag}-${target}.tar.gz"
-  download_url="https://github.com/${REPO}/releases/download/${tag}/${archive_name}"
+  base_url="${BD_INSTALL_BASE_URL:-https://github.com/${REPO}/releases/download}"
+  download_url="${base_url}/${tag}/${archive_name}"
 
   tmp_dir="$(mktemp -d 2>/dev/null || mktemp -d -t 'bd-install')"
   cleanup() {
@@ -115,6 +128,17 @@ main() {
   info "Downloading braindump ${tag} for ${target}..."
   archive_path="${tmp_dir}/${archive_name}"
   download_file "$download_url" "$archive_path" || error "Failed to download release archive from $download_url"
+
+  info "Verifying SHA-256 checksum..."
+  if download_file "${download_url}.sha256" "${tmp_dir}/${archive_name}.sha256" 2>/dev/null; then
+    if (cd "$tmp_dir" && verify_checksum "$archive_name"); then
+      info "Checksum OK."
+    else
+      error "Checksum verification failed for ${archive_name}; the download may be corrupted or tampered with."
+    fi
+  else
+    warn "No checksum file available for this release; skipping verification."
+  fi
 
   tar -xzf "$archive_path" -C "$tmp_dir" || error "Failed to extract archive $archive_name"
 
@@ -140,11 +164,17 @@ main() {
   if [ -w "$dest_dir" ]; then
     mv "${tmp_dir}/bd" "${dest_dir}/bd"
   else
+    if ! command -v sudo >/dev/null 2>&1; then
+      error "Cannot write to ${dest_dir} and sudo is not available; set INSTALL_DIR to a writable directory."
+    fi
     info "Elevating permissions with sudo to write to ${dest_dir}..."
     sudo mv "${tmp_dir}/bd" "${dest_dir}/bd"
   fi
 
-  chmod +x "${dest_dir}/bd" 2>/dev/null || sudo chmod +x "${dest_dir}/bd"
+  chmod +x "${dest_dir}/bd" 2>/dev/null || {
+    command -v sudo >/dev/null 2>&1 || error "Cannot make ${dest_dir}/bd executable; set INSTALL_DIR to a writable directory."
+    sudo chmod +x "${dest_dir}/bd"
+  }
 
   info "Successfully installed bd ${tag} to ${dest_dir}/bd"
 
@@ -158,4 +188,6 @@ main() {
   esac
 }
 
-main "$@"
+if [ "${BD_INSTALLER_SKIP_MAIN:-0}" != "1" ]; then
+  main "$@"
+fi

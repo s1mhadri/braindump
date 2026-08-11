@@ -21,6 +21,7 @@ A cross-platform CLI for instant terminal braindumping. It appends timestamped t
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/s1mhadri/braindump/main/install.sh | sh
+bd --version
 ```
 
 ### From source

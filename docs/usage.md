@@ -14,15 +14,19 @@ Supported release targets:
 
 ### One-line installer
 
-The one-line installer script automatically detects operating system and architecture, downloads the target release archive, and installs the binary into `/usr/local/bin` (or `$HOME/.local/bin` if `/usr/local/bin` is not writable):
+The one-line installer script automatically detects operating system and architecture, downloads the target release archive, verifies its SHA-256 checksum against the published checksum, and installs the binary into `/usr/local/bin` (or `$HOME/.local/bin` if `/usr/local/bin` is not writable):
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/s1mhadri/braindump/main/install.sh | sh
 ```
 
+A release archive whose checksum does not match is rejected before anything is installed. If no checksum file is available for a release, or the system has neither `sha256sum` nor `shasum`, the installer warns and proceeds.
+
 Options for `install.sh`:
 - `INSTALL_DIR`: Set custom installation destination directory (e.g. `INSTALL_DIR=$HOME/bin sh install.sh`).
 - `VERSION`: Specify exact version to install (e.g. `VERSION=v0.1.0 sh install.sh`).
+
+The release pipeline injects the release tag into the binary at build time, so `bd --version` reports exactly the released version (`v0.1.0` builds report `bd 0.1.0`).
 
 ## Braindump file
 
