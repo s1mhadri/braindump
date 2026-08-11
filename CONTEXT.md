@@ -37,7 +37,7 @@ The persisted settings file holding the braindump file path.
 _Avoid_: settings, options, preferences
 
 **Setup**:
-The interactive flow, triggered on first run, via `bd --setup`, or whenever the config is defective, that (re)configures the braindump file path.
+The interactive flow, triggered on first run, via `bd --setup`, or whenever the config is defective, that (re)configures the braindump file path. Requires an interactive terminal; without one the tool fails loudly and writes nothing.
 _Avoid_: onboarding, wizard, configuration
 
 **Migration**:

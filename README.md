@@ -11,6 +11,7 @@ A cross-platform CLI for instant terminal braindumping. It appends timestamped t
 - Notes starting with `-` are written as-is, never misread as flags
 - `bd -h`/`--help` and `bd -v`/`--version` for usage and version; `bd -- <text>` forces literal text mode
 - `bd --setup` (or the first run) interactively configures where dumps are stored, with `~/braindump/braindump.md` as the default
+- A broken config (malformed, missing path, or a path that no longer accepts a dump) re-runs setup; setup requires a terminal and fails loudly without one
 - Config persisted at the platform-standard location
 - Silent on success and on blank invocations
 
