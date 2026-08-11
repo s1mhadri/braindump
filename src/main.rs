@@ -1,7 +1,6 @@
 use chrono::Local;
 use std::fs::{self, OpenOptions};
-use std::io::ErrorKind;
-use std::io::Write;
+use std::io::{self, ErrorKind, IsTerminal, Read, Write};
 use std::path::PathBuf;
 
 fn main() {
@@ -12,11 +11,48 @@ fn main() {
 }
 
 fn run() -> Result<(), String> {
-    let note = normalize_note(std::env::args().skip(1).collect::<Vec<_>>().join(" "));
+    let note = match inline_args() {
+        Some(text) => normalize_note(text),
+        None => read_interactive()?,
+    };
     if note.trim().is_empty() {
         return Ok(());
     }
 
+    append_entry(&note)
+}
+
+fn inline_args() -> Option<String> {
+    let args: Vec<_> = std::env::args().skip(1).collect();
+    if args.is_empty() {
+        None
+    } else {
+        Some(args.join(" "))
+    }
+}
+
+fn read_interactive() -> Result<String, String> {
+    let mut stdin = io::stdin();
+    if stdin.is_terminal() {
+        let mut stdout = io::stdout();
+        stdout
+            .write_all(b"bd: dumping, Ctrl+D to save\n")
+            .map_err(|error| format!("failed to write to stdout: {error}"))?;
+        stdout
+            .flush()
+            .map_err(|error| format!("failed to write to stdout: {error}"))?;
+    }
+
+    let mut input = Vec::new();
+    stdin
+        .read_to_end(&mut input)
+        .map_err(|error| format!("failed to read input: {error}"))?;
+    let text =
+        String::from_utf8(input).map_err(|error| format!("input is not valid UTF-8: {error}"))?;
+    Ok(trim_blank_lines(&text).to_owned())
+}
+
+fn append_entry(note: &str) -> Result<(), String> {
     let now = Local::now();
     let path = default_path()?;
     let parent = path
@@ -59,6 +95,26 @@ fn normalize_note(note: String) -> String {
         .replace('\r', "\n")
         .trim_end_matches('\n')
         .to_string()
+}
+
+fn trim_blank_lines(text: &str) -> &str {
+    let mut start = None;
+    let mut end = text.len();
+    let mut offset = 0;
+    for line in text.split('\n') {
+        let line_end = offset + line.len();
+        if !line.trim().is_empty() {
+            if start.is_none() {
+                start = Some(offset);
+            }
+            end = line_end;
+        }
+        offset = line_end + 1;
+    }
+    let Some(start) = start else {
+        return "";
+    };
+    &text[start..end]
 }
 
 fn last_day_header(content: &str) -> Option<&str> {

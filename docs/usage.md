@@ -27,7 +27,9 @@ Everything after an entry header is free-form note text, always written verbatim
 ## Behavior notes
 
 - Arguments are joined with a single space; interior spacing is preserved (`bd foo "bar  baz"` appends `foo bar  baz`).
-- Line endings in the note are normalized to LF, and the note keeps a single trailing LF.
+- With no arguments, `bd` reads multi-line input from stdin until end-of-file: in a terminal it prints `bd: dumping, Ctrl+D to save` and reads until `Ctrl+D`; from a pipe it reads until the pipe closes with no hint.
+- Interactive input trims leading and trailing blank lines; interior content (blank lines, indentation, tabs, spacing) is preserved exactly.
+- Inline mode normalizes line endings to LF; interactive input preserves interior bytes exactly. Every entry ends with a single trailing LF.
 - Repeated dumps append in order; the file is untouched except for the append.
 - On success `bd` prints nothing. On failure it prints `bd: <error>` to stderr and exits with status 1.
 - Notes starting with `-` are literal text, never parsed as flags.

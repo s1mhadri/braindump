@@ -274,6 +274,128 @@ fn dump_reports_an_error_when_a_required_parent_is_a_file() {
         .stderr(predicate::str::starts_with(expected_error));
 }
 
+#[test]
+fn no_argument_multiline_stdin_is_appended() {
+    let temp_home = tempdir().expect("create temporary home");
+    let file_path = temp_home.path().join("braindump/braindump.md");
+    let before = Local::now().date_naive().to_string();
+
+    Command::cargo_bin("bd")
+        .expect("locate bd binary")
+        .env("HOME", temp_home.path())
+        .env("XDG_CONFIG_HOME", temp_home.path().join("config"))
+        .write_stdin("first line\nsecond line\n")
+        .assert()
+        .success()
+        .stdout("")
+        .stderr("");
+
+    let after = Local::now().date_naive().to_string();
+    let content = fs::read_to_string(file_path).expect("read braindump file");
+    let lines: Vec<_> = content.lines().collect();
+
+    assert_eq!(lines.len(), 5);
+    assert!(lines[0] == format!("# {before}") || lines[0] == format!("# {after}"));
+    assert_eq!(lines[1], "");
+    assert!(is_time_header(lines[2]));
+    assert_eq!(lines[3], "first line");
+    assert_eq!(lines[4], "second line");
+    assert!(content.ends_with('\n'));
+}
+
+#[test]
+fn interactive_input_trims_leading_and_trailing_blank_lines() {
+    let temp_home = tempdir().expect("create temporary home");
+    let file_path = temp_home.path().join("braindump/braindump.md");
+
+    Command::cargo_bin("bd")
+        .expect("locate bd binary")
+        .env("HOME", temp_home.path())
+        .env("XDG_CONFIG_HOME", temp_home.path().join("config"))
+        .write_stdin("\n\nfirst line\nsecond line\n\n  \n")
+        .assert()
+        .success()
+        .stdout("")
+        .stderr("");
+
+    let content = fs::read_to_string(file_path).expect("read braindump file");
+    assert!(content.ends_with("first line\nsecond line\n"));
+    assert!(!content.contains("\n\nfirst line"));
+}
+
+#[test]
+fn interactive_input_preserves_interior_blank_lines_and_formatting() {
+    let temp_home = tempdir().expect("create temporary home");
+    let file_path = temp_home.path().join("braindump/braindump.md");
+
+    Command::cargo_bin("bd")
+        .expect("locate bd binary")
+        .env("HOME", temp_home.path())
+        .env("XDG_CONFIG_HOME", temp_home.path().join("config"))
+        .write_stdin("  indented\n\n\tTabbed\n\n\nspaced    out\n\nfinal\n")
+        .assert()
+        .success()
+        .stdout("")
+        .stderr("");
+
+    let content = fs::read_to_string(file_path).expect("read braindump file");
+    assert!(content.ends_with("  indented\n\n\tTabbed\n\n\nspaced    out\n\nfinal\n"));
+}
+
+#[test]
+fn all_blank_interactive_input_is_a_silent_no_op() {
+    let temp_home = tempdir().expect("create temporary home");
+
+    Command::cargo_bin("bd")
+        .expect("locate bd binary")
+        .env("HOME", temp_home.path())
+        .env("XDG_CONFIG_HOME", temp_home.path().join("config"))
+        .write_stdin("\n\n   \n\t\n\n")
+        .assert()
+        .success()
+        .stdout("")
+        .stderr("");
+
+    assert!(!temp_home.path().join("braindump/braindump.md").exists());
+    assert!(!temp_home.path().join("braindump").exists());
+}
+
+#[test]
+fn inline_arguments_take_precedence_over_stdin() {
+    let temp_home = tempdir().expect("create temporary home");
+    let file_path = temp_home.path().join("braindump/braindump.md");
+
+    Command::cargo_bin("bd")
+        .expect("locate bd binary")
+        .env("HOME", temp_home.path())
+        .env("XDG_CONFIG_HOME", temp_home.path().join("config"))
+        .args(["inline note"])
+        .write_stdin(&b"sentinel from stdin\xffSTDIN"[..])
+        .assert()
+        .success()
+        .stdout("")
+        .stderr("");
+
+    let content = fs::read_to_string(file_path).expect("read braindump file");
+    assert!(content.ends_with("inline note\n"));
+    assert!(!content.contains("STDIN"));
+}
+
+#[test]
+fn piped_interactive_input_prints_no_hint() {
+    let temp_home = tempdir().expect("create temporary home");
+
+    Command::cargo_bin("bd")
+        .expect("locate bd binary")
+        .env("HOME", temp_home.path())
+        .env("XDG_CONFIG_HOME", temp_home.path().join("config"))
+        .write_stdin("piped note\n")
+        .assert()
+        .success()
+        .stdout("")
+        .stderr("");
+}
+
 fn is_time_header(line: &str) -> bool {
     let time = line.strip_prefix("## ").unwrap_or_default();
     time.len() == 8

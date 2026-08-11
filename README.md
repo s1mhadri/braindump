@@ -5,6 +5,7 @@ A cross-platform CLI for instant terminal braindumping. It appends timestamped t
 ## Features
 
 - Append a timestamped entry to your braindump file with a single command
+- Run `bd` with no arguments to capture multi-line input until `Ctrl+D`
 - One Markdown file per user, append-only: existing entries are never edited, deleted, or reordered
 - Day-grouped format (`# YYYY-MM-DD` header per day, `## HH:MM:SS` header per entry) for browsing in any Markdown renderer
 - Notes starting with `-` are written as-is, never misread as flags
@@ -19,7 +20,7 @@ cargo install --path .
 bd remember to buy milk
 ```
 
-This appends the note to `~/braindump/braindump.md`, created on first use. See `docs/usage.md` for the full file format and behavior details.
+This appends the note to `~/braindump/braindump.md`, created on first use. Run `bd` with no arguments to type directly in the terminal, ending with `Ctrl+D`. See `docs/usage.md` for the full file format and behavior details.
 
 ## Development
 
