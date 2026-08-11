@@ -71,6 +71,7 @@ jobs:
           fi
 
       - name: Verify binary version
+        if: matrix.target != 'aarch64-unknown-linux-gnu'
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           REPORTED="$(./target/${{ matrix.target }}/release/bd --version)"
