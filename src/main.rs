@@ -1,7 +1,10 @@
+mod config;
+mod setup;
+
 use chrono::Local;
 use std::fs::{self, OpenOptions};
 use std::io::{self, ErrorKind, IsTerminal, Read, Write};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 fn main() {
     if let Err(error) = run() {
@@ -11,24 +14,37 @@ fn main() {
 }
 
 fn run() -> Result<(), String> {
-    let note = match parse_args() {
+    match parse_args() {
         Input::Command(Command::Help) => {
             print!("{USAGE}");
-            return Ok(());
+            Ok(())
         }
         Input::Command(Command::Version) => {
             println!("bd {VERSION}");
-            return Ok(());
+            Ok(())
         }
-        Input::Command(Command::Setup) => return Err("setup is not implemented yet".to_string()),
-        Input::Literal(text) => normalize_note(text),
-        Input::Interactive => read_interactive()?,
-    };
+        Input::Command(Command::Setup) => {
+            setup::setup()?;
+            Ok(())
+        }
+        Input::Literal(text) => dump(normalize_note(text)),
+        Input::Interactive => dump(read_interactive()?),
+    }
+}
+
+fn dump(note: String) -> Result<(), String> {
     if note.trim().is_empty() {
         return Ok(());
     }
+    let path = resolve_path()?;
+    append_entry(&note, &path)
+}
 
-    append_entry(&note)
+fn resolve_path() -> Result<PathBuf, String> {
+    match config::load_path()? {
+        Some(path) => Ok(PathBuf::from(path)),
+        None => setup::setup(),
+    }
 }
 
 enum Input {
@@ -94,9 +110,8 @@ fn read_interactive() -> Result<String, String> {
     Ok(trim_blank_lines(&text).to_owned())
 }
 
-fn append_entry(note: &str) -> Result<(), String> {
+fn append_entry(note: &str, path: &Path) -> Result<(), String> {
     let now = Local::now();
-    let path = default_path()?;
     let parent = path
         .parent()
         .ok_or_else(|| format!("failed to determine parent of {}", path.display()))?;
@@ -104,7 +119,7 @@ fn append_entry(note: &str) -> Result<(), String> {
     fs::create_dir_all(parent)
         .map_err(|error| format!("failed to write {}: {error}", path.display()))?;
 
-    let existing = match fs::read_to_string(&path) {
+    let existing = match fs::read_to_string(path) {
         Ok(content) => content,
         Err(error) if error.kind() == ErrorKind::NotFound => String::new(),
         Err(error) => return Err(format!("failed to write {}: {error}", path.display())),
@@ -120,16 +135,10 @@ fn append_entry(note: &str) -> Result<(), String> {
     let mut file = OpenOptions::new()
         .create(true)
         .append(true)
-        .open(&path)
+        .open(path)
         .map_err(|error| format!("failed to write {}: {error}", path.display()))?;
     file.write_all(content.as_bytes())
         .map_err(|error| format!("failed to write {}: {error}", path.display()))
-}
-
-fn default_path() -> Result<PathBuf, String> {
-    home::home_dir()
-        .map(|home| home.join("braindump/braindump.md"))
-        .ok_or_else(|| "failed to determine home directory".to_string())
 }
 
 fn normalize_note(note: String) -> String {

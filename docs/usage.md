@@ -4,7 +4,7 @@ The detailed usage, format, and behavior documentation for Braindump. See `READM
 
 ## Braindump file
 
-Every dump lands in `~/braindump/braindump.md`, created on first use. One file per user, append-only: `bd` never edits, deletes, or reorders existing entries, and it never parses note text.
+Every dump lands in the braindump file path configured at setup, defaulting to `~/braindump/braindump.md`. One file per user, append-only: `bd` never edits, deletes, or reorders existing entries, and it never parses note text.
 
 Each successful dump appends exactly one entry under the current day's header:
 
@@ -30,9 +30,15 @@ Only an exact match at the first position against the slot-0 allow-list is treat
 
 - `bd -h` / `bd --help` prints usage to stdout and exits.
 - `bd -v` / `bd --version` prints the version and exits.
-- `bd --setup` routes to the setup flow, which reconfigures the braindump file path. (Not yet implemented; reports a clear error.)
+- `bd --setup` runs the interactive setup flow, which (re)configures the braindump file path.
 - `bd -- <text...>` forces literal text mode: the `--` is dropped and everything after it is appended verbatim, even if it looks like a command (`bd -- --search foo` appends `--search foo`).
 - Command-like tokens in any position after the first are always note text (`bd call -h support` appends `call -h support`).
+
+## Setup
+
+Setup runs interactively the first time `bd` is invoked with no config file, and on demand via `bd --setup`. It prompts for the braindump file path with `~/braindump/braindump.md` as the default (press Enter to accept). A custom path is taken as typed: a leading `~` is expanded to the home directory and relative paths are resolved against the current directory. A path that points at an existing directory is rejected and the prompt repeats. Once accepted, parent directories are auto-created and the config is written. Ctrl+C aborts with nothing written.
+
+The config lives at `$XDG_CONFIG_HOME/braindump/config.toml` (or `~/.config/braindump/config.toml`) on Linux/macOS and `%APPDATA%\braindump\config.toml` on Windows. It holds the braindump file path under the `braindump_file_path` key.
 
 ## Behavior notes
 
