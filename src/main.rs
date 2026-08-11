@@ -1,4 +1,5 @@
 mod config;
+mod migration;
 mod setup;
 
 use chrono::Local;
@@ -24,7 +25,8 @@ fn run() -> Result<(), String> {
             Ok(())
         }
         Input::Command(Command::Setup) => {
-            setup::setup()?;
+            let existing = config::load_path()?.map(PathBuf::from);
+            run_setup(existing.as_deref())?;
             Ok(())
         }
         Input::Literal(text) => dump(normalize_note(text)),
@@ -43,8 +45,24 @@ fn dump(note: String) -> Result<(), String> {
 fn resolve_path() -> Result<PathBuf, String> {
     match config::load_path()? {
         Some(path) => Ok(PathBuf::from(path)),
-        None => setup::setup(),
+        None => run_setup(None),
     }
+}
+
+fn run_setup(existing: Option<&Path>) -> Result<PathBuf, String> {
+    let result = setup::setup(existing)?;
+    let parent = result
+        .path
+        .parent()
+        .ok_or_else(|| format!("failed to determine parent of {}", result.path.display()))?;
+    fs::create_dir_all(parent)
+        .map_err(|error| format!("failed to create {}: {error}", parent.display()))?;
+
+    if let setup::MigrationDecision::Migrate { ref source } = result.migration {
+        migration::migrate(source, &result.path)?;
+    }
+    config::save_path(&result.path.display().to_string())?;
+    Ok(result.path)
 }
 
 enum Input {

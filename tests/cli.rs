@@ -464,4 +464,3 @@ fn inline_dumps_use_the_configured_path() {
     let content = fs::read_to_string(&custom).expect("read braindump file");
     assert!(content.ends_with("note here\n"));
 }
-
