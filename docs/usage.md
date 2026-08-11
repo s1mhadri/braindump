@@ -2,6 +2,28 @@
 
 The detailed usage, format, and behavior documentation for Braindump. See `README.md` for the minimal quick start.
 
+## Installation and distribution
+
+Braindump distributes pre-built native binaries for macOS and Linux on versioned GitHub release tags (`v0.1.0` style).
+
+Supported release targets:
+- macOS Intel (`x86_64-apple-darwin`)
+- macOS Apple Silicon (`aarch64-apple-darwin`)
+- Linux x86_64 (`x86_64-unknown-linux-gnu`)
+- Linux ARM64 (`aarch64-unknown-linux-gnu`)
+
+### One-line installer
+
+The one-line installer script automatically detects operating system and architecture, downloads the target release archive, and installs the binary into `/usr/local/bin` (or `$HOME/.local/bin` if `/usr/local/bin` is not writable):
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/s1mhadri/braindump/main/install.sh | sh
+```
+
+Options for `install.sh`:
+- `INSTALL_DIR`: Set custom installation destination directory (e.g. `INSTALL_DIR=$HOME/bin sh install.sh`).
+- `VERSION`: Specify exact version to install (e.g. `VERSION=v0.1.0 sh install.sh`).
+
 ## Braindump file
 
 Every dump lands in the braindump file path configured at setup, defaulting to `~/braindump/braindump.md`. One file per user, append-only: `bd` never edits, deletes, or reorders existing entries, and it never parses note text.

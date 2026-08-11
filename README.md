@@ -17,10 +17,23 @@ A cross-platform CLI for instant terminal braindumping. It appends timestamped t
 
 ## Getting started
 
+### Quick install (macOS & Linux)
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/s1mhadri/braindump/main/install.sh | sh
+```
+
+### From source
+
 Requires Rust with Cargo.
 
-```
+```sh
 cargo install --path .
+```
+
+### Quick start
+
+```sh
 bd remember to buy milk
 ```
 
