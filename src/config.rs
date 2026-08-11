@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::env;
 use std::fs;
 use std::io::ErrorKind;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Serialize, Deserialize)]
 struct Config {
@@ -12,20 +12,59 @@ struct Config {
 pub fn load_path() -> Result<Option<String>, String> {
     let path = config_path()?;
     match fs::read_to_string(&path) {
-        Err(error) if error.kind() == ErrorKind::NotFound => Ok(None),
-        Err(error) => Err(format!("failed to read {}: {error}", path.display())),
         Ok(text) => match toml::from_str::<Config>(&text) {
             Ok(config) => {
                 let braindump_file_path = config.braindump_file_path.trim();
                 if braindump_file_path.is_empty() {
                     Ok(None)
-                } else {
+                } else if usable_path(Path::new(braindump_file_path)) {
                     Ok(Some(braindump_file_path.to_string()))
+                } else {
+                    Ok(None)
                 }
             }
             Err(_) => Ok(None),
         },
+        Err(_) => Ok(None),
     }
+}
+
+fn usable_path(path: &Path) -> bool {
+    match fs::OpenOptions::new().append(true).open(path) {
+        Ok(_) => true,
+        Err(error) if error.kind() == ErrorKind::NotFound => creatable_ancestor(path),
+        Err(_) => false,
+    }
+}
+
+fn creatable_ancestor(path: &Path) -> bool {
+    let mut ancestor = path;
+    while let Some(parent) = ancestor.parent() {
+        if parent.as_os_str().is_empty() {
+            return env::current_dir().is_ok();
+        }
+        match fs::metadata(parent) {
+            Ok(metadata) => return metadata.is_dir() && dir_accepts_files(parent),
+            Err(error) if error.kind() == ErrorKind::NotFound => {
+                ancestor = parent;
+            }
+            Err(_) => return false,
+        }
+    }
+    false
+}
+
+#[cfg(unix)]
+fn dir_accepts_files(dir: &Path) -> bool {
+    use std::os::unix::fs::PermissionsExt;
+    fs::metadata(dir)
+        .map(|metadata| metadata.permissions().mode() & 0o222 != 0)
+        .unwrap_or(false)
+}
+
+#[cfg(not(unix))]
+fn dir_accepts_files(_dir: &Path) -> bool {
+    true
 }
 
 pub fn save_path(braindump_file_path: &str) -> Result<(), String> {

@@ -1,10 +1,15 @@
 use crate::config;
 use std::env;
 use std::fs;
-use std::io::{self, Write};
+use std::io::{self, IsTerminal, Write};
 use std::path::{Path, PathBuf};
 
 pub fn setup() -> Result<PathBuf, String> {
+    if !io::stdin().is_terminal() {
+        return Err(
+            "no terminal available for setup; run `bd --setup` from a terminal".to_string(),
+        );
+    }
     let default = default_path()?;
     let path = loop {
         print!(
