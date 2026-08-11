@@ -11,7 +11,7 @@ pub fn bd(temp_home: &tempfile::TempDir) -> Command {
 }
 
 pub fn braindump_path(temp_home: &tempfile::TempDir) -> PathBuf {
-    temp_home.path().join("braindump/braindump.md")
+    temp_home.path().join("braindump.md")
 }
 
 #[allow(dead_code)]

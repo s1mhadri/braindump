@@ -30,7 +30,7 @@ The release pipeline injects the release tag into the binary at build time, so `
 
 ## Braindump file
 
-Every dump lands in the braindump file path configured at setup, defaulting to `~/braindump/braindump.md`. One file per user, append-only: `bd` never edits, deletes, or reorders existing entries, and it never parses note text.
+Every dump lands in the braindump file path configured at setup, defaulting to `~/braindump.md`. One file per user, append-only: `bd` never edits, deletes, or reorders existing entries, and it never parses note text.
 
 Each successful dump appends exactly one entry under the current day's header:
 
@@ -66,7 +66,7 @@ Setup runs interactively the first time `bd` is invoked with no config file, on 
 
 Setup requires an interactive terminal on stdin. When it is triggered with piped stdin (a script, cron, or any non-interactive context) it fails loudly instead: `bd: no terminal available for setup; run `bd --setup` from a terminal` on stderr, a non-zero exit, and nothing written.
 
-It prompts for the braindump file path (`Braindump file path [default: ~/braindump/braindump.md]: `), defaulting to `~/braindump/braindump.md` (press Enter to accept). A custom path is taken as typed: a leading `~` is expanded to the home directory and relative paths are resolved against the current directory. A path that points at an existing directory is rejected and the prompt repeats.
+It prompts for the braindump file path (`Braindump file path [default: ~/braindump.md]: `), defaulting to `~/braindump.md` (press Enter to accept). A custom path is taken as typed: a leading `~` is expanded to the home directory and relative paths are resolved against the current directory. A path that points at an existing directory is rejected and the prompt repeats.
 
 When setup is run with an existing usable braindump file path and a different target path is selected, setup asks whether to migrate existing entries (`Migrate existing braindump file? [Y/n]: `). Migration is the default (press Enter or `y`). Choosing migrate reads the source entries verbatim as raw bytes and merges them into the selected target file, preserving entry order and appending into an existing target file if present. If both files are non-empty, exactly one LF byte is inserted at the boundary unless the target already ends in LF or the source begins with LF. Choosing new (`n`) starts using the new target path without copying entries or deleting or truncating either file. First-run setup, defective config without a usable prior path, or re-selecting the same path skip the migration prompt.
 

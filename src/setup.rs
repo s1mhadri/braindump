@@ -93,7 +93,7 @@ fn prompt_migration(old_path: &Path) -> Result<MigrationDecision, String> {
 
 fn default_path() -> Result<PathBuf, String> {
     home::home_dir()
-        .map(|home| home.join("braindump/braindump.md"))
+        .map(|home| home.join("braindump.md"))
         .ok_or_else(|| "failed to determine home directory".to_string())
 }
 
