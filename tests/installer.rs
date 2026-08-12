@@ -123,7 +123,10 @@ main
     );
     fs::write(&wrapper, content).unwrap();
     make_executable(&wrapper);
-    Command::new(&wrapper).output().expect("execute install.sh")
+    Command::new("sh")
+        .arg(&wrapper)
+        .output()
+        .expect("execute install.sh")
 }
 
 #[test]
