@@ -1,57 +1,69 @@
 # Braindump
 
-A cross-platform CLI for instant terminal braindumping. It appends timestamped thoughts directly to a local Markdown file with zero friction, so you can capture ideas without leaving the terminal. The CLI is a capture pipe, not a task manager or journal.
+A cross-platform CLI for instant terminal braindumping. `bd` appends timestamped thoughts to a local Markdown file with zero friction, so you can capture ideas without ever leaving the terminal.
+
+It's a capture pipe, not a task manager or journal.
+
+## Why
+
+If you're comfortable in a terminal, opening a notes app or a browser to write something down breaks your flow. Either the thought or your focus doesn't survive the trip. Braindump is one command that appends to a plain file and gets you back to what you were doing.
+
+It's deliberately not a full app or a TUI. There's no file to name and no section to pick. You write the thought down and you're done. Sorting it out is a problem for later, not now.
+
+That's also why entries are timestamped: a plain chronological record is easy for you to skim later, and it's what lets an LLM reading the file understand what came before what, rather than working through a pile of loose, unordered notes.
 
 ## Features
 
-- Append a timestamped entry to your braindump file with a single command
-- Run `bd` with no arguments to capture multi-line input until `Ctrl+D`
-- One Markdown file per user, append-only: existing entries are never edited, deleted, or reordered
-- Day-grouped format (`# YYYY-MM-DD` header per day, `## HH:MM:SS` header per entry) for browsing in any Markdown renderer
+- Single command appends a timestamped entry to your braindump file
+- Run `bd` with no arguments for multi-line capture, ended with `Ctrl+D`
+- One Markdown file per user, append-only: entries are never edited, deleted, or reordered
+- Day-grouped format (`# YYYY-MM-DD` per day, `## HH:MM:SS` per entry), readable in any Markdown renderer
 - Notes starting with `-` are written as-is, never misread as flags
-- `bd -h`/`--help` and `bd -v`/`--version` for usage and version; `bd -- <text>` forces literal text mode
-- `bd --setup` (or the first run) interactively configures where dumps are stored, with `~/braindump.md` as the default
-- A broken config (malformed, missing path, or a path that no longer accepts a dump) re-runs setup; setup requires a terminal and fails loudly without one
-- Config persisted at the platform-standard location
-- `bd --uninstall` removes the binary and its config in one confirmed step, leaving your notes untouched
-- Silent on success and on blank invocations
 
-## Getting started
+## Install
 
-### Quick install (macOS & Linux)
-
+**macOS & Linux**
 ```sh
 curl -fsSL https://raw.githubusercontent.com/s1mhadri/braindump/main/install.sh | sh
 bd --version
 ```
 
-### From source
-
-Requires Rust with Cargo.
-
+**From source** (requires Rust + Cargo)
 ```sh
 cargo install --path .
 ```
 
-### Quick start
+## Quick start
 
 ```sh
 bd remember to buy milk
 ```
 
-The first run asks where dumps should live, defaulting to `~/braindump.md`. Run `bd --setup` at any time to change it. Run `bd` with no arguments to type directly in the terminal, ending with `Ctrl+D`. See `docs/usage.md` for the full file format and behavior details.
+The first run asks where dumps should live (default: `~/braindump.md`). Change it anytime with `bd --setup`.
 
-### Uninstall
+## Usage
 
-```sh
-bd --uninstall
-```
+| Command | Description |
+|---|---|
+| `bd <text>` | Append a one-line entry |
+| `bd` | Multi-line capture, ends with `Ctrl+D` |
+| `bd -- <text>` | Force literal text mode |
+| `bd --setup` | Configure or reconfigure where dumps are stored |
+| `bd --uninstall` | Remove the `bd` binary and config (your notes are untouched) |
+| `bd -v`, `--version` | Print version |
+| `bd -h`, `--help` | Print help |
 
-Confirm when prompted. `bd --uninstall` removes the `bd` binary and the config directory; your braindump file is never touched.
+Full file format and behavior details: [`docs/usage.md`](docs/usage.md)
 
 ## Development
 
-```
+```sh
 cargo build
 cargo test
+cargo fmt --check
+cargo clippy
 ```
+
+## License
+
+MIT
